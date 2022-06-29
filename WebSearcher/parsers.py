@@ -229,3 +229,4 @@ def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
         p['serp_rank'] = serp_rank
         
     return parsed
+
