@@ -106,7 +106,7 @@ def classify_type(cmpt, cmpt_type='unknown'):
         if cmpt.attrs['class'] == ['g']:
             cmpt_type = 'general'
 
-    if 'class' in cmpt.attrs.keys() and cmpt.attrs['class'] == ['g', 'kno-kp', 'mnr-c', 'g-blk']:
+    if 'class' in cmpt.attrs.keys() and cmpt.attrs['class'] == ['g', 'kno-kp', 'mnr-c', 'g-blk', 'g-blk','wQiwMc ygGdYd related-question-pair']:
         cmpt_type='people_also_ask'
  
     if 'jsdata' in cmpt.attrs.keys() and "ALusFc;;" in cmpt.attrs['jsdata']:
