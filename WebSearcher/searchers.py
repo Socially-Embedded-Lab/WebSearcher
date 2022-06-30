@@ -3,7 +3,8 @@ from . import locations
 from . import webutils as wu
 from . import utils
 from . import logger
-
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 import os
 import json
 import time
@@ -335,3 +336,15 @@ class SearchEngine(object):
                     # Save new SERP-specific file
                     fp = os.path.join(save_dir, 'results_html', f'{self.serp_id}.json')
                     utils.write_lines(self.results_html, fp)
+
+    def screenshot(self,html_path, save_path, driver):
+        # options = webdriver.ChromeOptions()
+        # options.headless = True
+        # driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+        driver.implicitly_wait(10)
+        driver.get(html_path)
+        time.sleep(8)
+
+        S = lambda X: driver.execute_script('return document.body.parentNode.scroll' + X)
+        driver.set_window_size(S('Width'), S('Height'))
+        driver.find_element_by_tag_name('body').screenshot(save_path)
