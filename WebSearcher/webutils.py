@@ -17,7 +17,7 @@ import tldextract
 import urllib.parse as urlparse
 from bs4 import BeautifulSoup
 
-
+'/Users/din/Desktop/diff_search'
 def load_html(fp, zipped=False):
     """Load html file, with option for brotli decompression"""
     read_type = 'rb' if zipped else 'r'
