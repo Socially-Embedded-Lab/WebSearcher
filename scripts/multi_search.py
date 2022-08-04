@@ -11,6 +11,15 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 import WebSearcher as ws
 
+def screenshot(url, save_path, driver, implicit_wait=10, render_wait=8):
+    driver.implicitly_wait(implicit_wait)
+    driver.get(url)
+    time.sleep(render_wait)
+
+    S = lambda X: driver.execute_script('return document.body.parentNode.scroll' + X)
+    driver.set_window_size(S('Width'), S('Height'))
+    driver.find_element('tag name', 'body').screenshot(save_path)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", type=str, 
@@ -26,19 +35,26 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # read input
-    df = pd.read_excel(args.input)
+    df = pd.read_csv(args.input)
 
     # create output directories
     today = str(date.today())
-    html_dir = Path(args.out_dir) / 'html' / today
-    screen_dir = Path(args.out_dir) / 'screenshot' / today
+    html_dir = Path(args.out_dir) / today / 'html'
+    screen_dir = Path(args.out_dir) / today / 'screenshot'
     html_dir.mkdir(parents=True, exist_ok=True)
     screen_dir.mkdir(parents=True, exist_ok=True)
     
     options = webdriver.ChromeOptions()
     options.headless = True
+    options.add_argument("--disable-dev-shm-usage");
+    options.add_argument('--disable-crash-reporter')
+    options.add_argument('--disable-gpu')
+    options.add_argument("--disable-extensions")
+    options.add_argument("start-maximized");
+    options.add_argument("disable-infobars");
     driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
+    screenshot_list = []
     for index, row in df.iterrows():
         loc = row['country']
         lang = row['langs']
@@ -50,9 +66,14 @@ if __name__ == '__main__':
         se = ws.SearchEngine(accept_language=row['code_lang'])
         se.search(row['term'], location= loc)
         
-        with open(html_path / f'{file_name}.html', 'wt') as f:
+        with open(html_path, 'wt') as f:
             f.write(se.html)
+        print(f'HTML for {file_name} saved.\n')
+        screenshot_list.append((html_path, screen_path))
 
-        se.screenshot('file://' + html_path, screenshot_path, driver)
-        print(f'{file_name} done.\n')
         time.sleep(1)
+
+    for html_path, screen_path in screenshot_list:
+        screenshot('file://' + html_path, screen_path, driver)
+        print(f'Screenshot saved to {screen_path}.\n')
+        

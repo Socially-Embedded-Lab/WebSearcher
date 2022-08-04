@@ -335,12 +335,3 @@ class SearchEngine(object):
                     # Save new SERP-specific file
                     fp = os.path.join(save_dir, 'results_html', f'{self.serp_id}.json')
                     utils.write_lines(self.results_html, fp)
-
-    def screenshot(self, url, save_path, driver, implicit_wait=10, render_wait=8):
-        driver.implicitly_wait(implicit_wait)
-        driver.get(url)
-        time.sleep(render_wait)
-
-        S = lambda X: driver.execute_script('return document.body.parentNode.scroll' + X)
-        driver.set_window_size(S('Width'), S('Height'))
-        driver.find_element_by_tag_name('body').screenshot(save_path)
