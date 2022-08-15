@@ -8,6 +8,7 @@ from datetime import date
 
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service as ChromeService
 
 import WebSearcher as ws
 
@@ -38,9 +39,9 @@ if __name__ == '__main__':
     df = pd.read_csv(args.input)
 
     # create output directories
-    today = str(date.today())
-    html_dir = Path(args.out_dir) / today / 'html'
-    screen_dir = Path(args.out_dir) / today / 'screenshot'
+    # today = str(date.today())
+    html_dir = Path(args.out_dir) / 'html'
+    screen_dir = Path(args.out_dir) / 'screenshot'
     html_dir.mkdir(parents=True, exist_ok=True)
     screen_dir.mkdir(parents=True, exist_ok=True)
     
@@ -52,7 +53,11 @@ if __name__ == '__main__':
     options.add_argument("--disable-extensions")
     options.add_argument("start-maximized");
     options.add_argument("disable-infobars");
-    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+    # driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+    driver = webdriver.Chrome(
+        service=ChromeService(ChromeDriverManager().install()),
+        options=options)
+
 
     screenshot_list = []
     for index, row in df.iterrows():
