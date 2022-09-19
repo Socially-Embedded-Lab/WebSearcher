@@ -17,7 +17,7 @@ fi
 # Enter project directory
 cd /home/nir/repos/WebSearcher
 
-Queries="queries_test_20220815.csv"
+Queries="queries_test_20220919.csv"
 cp "$Queries" "$Crawl"
 
 # Crawl args
@@ -40,5 +40,8 @@ echo $(python --version) # current python
 # Output: $Crawl/{serps.json.bz2, results.json}
 python scripts/multi_search.py "${args[@]}"
 
+# Compress results
+tar -zcvf "$Crawl-html.tar.gz" -C "$Crawl" --exclude="./screenshot" .
+
 # sync results to dropbox
-/home/nir/bin/dropbox_uploader.sh -s -p upload "$Crawl" /SciSearches
+/home/nir/bin/dropbox_uploader.sh -s -p upload "$Crawl-html.tar.gz" /SciSearches
