@@ -69,16 +69,21 @@ if __name__ == '__main__':
 
         # SEARCH
         se = ws.SearchEngine(accept_language=row['code_lang'])
-        se.search(row['term'], location= loc)
-        
+        se.params['gl'] = row['gl']
+        se.params['hl'] = row['hl']
+        # try:
+        se.search(row['term'], location=loc)
+    
         with open(html_path, 'wt') as f:
             f.write(se.html)
         print(f'HTML for {file_name} saved.\n')
-        screenshot_list.append((html_path, screen_path))
+        screenshot_list.append((html_path, screen_path))        
+        # except Exception:
+        #     se.log.exception(f"Failed to get SERP")
 
         time.sleep(1)
 
-    for html_path, screen_path in screenshot_list:
-        screenshot('file://' + html_path, screen_path, driver)
-        print(f'Screenshot saved to {screen_path}.\n')
+    # for html_path, screen_path in screenshot_list:
+    #     screenshot('file://' + html_path, screen_path, driver)
+    #     print(f'Screenshot saved to {screen_path}.\n')
         

@@ -17,7 +17,7 @@ fi
 # Enter project directory
 cd /home/nir/repos/WebSearcher
 
-Queries="queries_test_20220919.csv"
+Queries="queries_test_20221204.csv"
 cp "$Queries" "$Crawl"
 
 # Crawl args
