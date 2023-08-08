@@ -13,6 +13,9 @@ def parse_top_stories(cmpt, ctype='top_stories'):
         list : list of parsed subcomponent dictionaries
     """
     subs = cmpt.find_all('g-inner-card')
+    # OR CODE ---------------
+    subs = cmpt.find_all(class_="WlydOe") if not subs else subs
+    # ------------------
     if subs:
         return [parse_top_story(sub, ctype, sub_rank) for sub_rank, sub in enumerate(subs)]
     else:
@@ -31,8 +34,12 @@ def parse_top_story(sub, ctype, sub_rank=0):
     """
     parsed = {'type':ctype, 'sub_rank':sub_rank}
     a = sub.find('a')
-    parsed['title'] = a.text if a else None
-    parsed['url'] = a['href'] if a else None
+    if not a:
+        parsed['url'] = sub['href']
+    else:
+        parsed['title'] = a.text if a else None
+        parsed['url'] = a['href'] if a else None
+
 
     cite = sub.find('cite')
     parsed['cite'] = cite.text if cite else None

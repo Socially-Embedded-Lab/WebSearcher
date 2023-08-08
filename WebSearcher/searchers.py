@@ -193,7 +193,6 @@ class SearchEngine(object):
             self.log.exception(f'unzip error | serp_id : {self.serp_id}')
             self.html = rcontent
 
-
     def save_serp(self, save_dir='.', append_to=''):
         """Save SERP to file
 

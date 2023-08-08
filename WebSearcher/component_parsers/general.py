@@ -15,7 +15,7 @@ def parse_general_results(cmpt):
     """
 
     # Legacy compatibility
-    subs = cmpt.find_all('div', {'class':'g'})
+    subs = cmpt.find_all('div', {'class':['g']})
     subs = subs if subs else [cmpt] 
     
     return [parse_general_result(sub, sub_rank) for sub_rank, sub in enumerate(subs)]
@@ -38,12 +38,18 @@ def parse_general_result(sub, sub_rank=0):
     # title_div = sub.find('h3').find('a')
     title_div1 = sub.find('div', {'class':'rc'})
     title_div2 = sub.find('div', {'class':'yuRUbf'})
+    # OR CODE -------------
+    title_div3 = sub.find('div', {'class':'ct3b9e'})
+    #--------------------
     if title_div1:
         parsed['title'] = title_div1.find('h3').text
         parsed['url'] = title_div1.find('a')['href']
     elif title_div2:
         parsed['title'] = title_div2.find('h3').text
         parsed['url'] = title_div2.find('a')['href']
+    elif title_div3:
+        parsed['title'] = title_div3.find('h3').text
+        parsed['url'] = title_div3.find('a')['href']
 
     # Get citation
     cite = sub.find('cite')

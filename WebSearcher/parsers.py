@@ -3,20 +3,23 @@ from .component_classifier import classify_type
 from .component_parsers import type_functions
 from .component_parsers.footer import extract_footer, extract_footer_components
 from . import logger
+
 log = logger.Logger().start(__name__)
 
 import traceback
 from bs4 import BeautifulSoup
 
 UNKNOWN_COMPONENT = {
-    'sub_rank':0, 
+    'sub_rank': 0,
     'type': 'unknown'
 }
+
 
 def parse_query(soup):
     """Parse query from title of html soup"""
     title = str(soup.html.find('title'))
     return webutils.strip_html_tags(title).split(" - ")[0]
+
 
 def parse_lang(soup):
     """Parse language from html tags"""
@@ -26,14 +29,17 @@ def parse_lang(soup):
         log.exception('Error while parsing language')
         return None
 
+
 def get_component_parser(cmpt_type, cmpt_funcs=type_functions):
     """Returns the parser for a given component type"""
     return cmpt_funcs[cmpt_type] if cmpt_type in cmpt_funcs else defaultParser(cmpt_type)
+
 
 def defaultParser(cmpt_type):
     def defaultDF(cmpt):
         parsed = {'type': 'knowledge', 'subtype': cmpt_type}
         return [parsed]
+
     return defaultDF
 
 
@@ -51,43 +57,49 @@ def extract_results_column(soup):
 
     if not left_side_bar:
         # Extract results from single div
-        rso = soup.find('div', {'id':'rso'})
+        # OR CODE ---------------
+        sub_class = soup.find('div', {'class': 'MjjYud'})
+        main = None
+        if sub_class:
+            main = sub_class.find('div', {'id': 'kp-wp-tab-overview'})
+        main = soup.find('div', {'id': 'rso'}) if not main else main
+        # ---------------
+        rso = soup.find('div', {'id': 'rso'})
         drop_tags = {'script', 'style', None}
-        column = [('main', c) for c in rso.children if c.name not in drop_tags]
-
+        column = [('main', c) for c in main.children if c.name not in drop_tags]
+        # column = [('main', c) for c in rso.children if c.name not in drop_tags]
     else:
         # Extract results from two div sections
         rso = []
         # rso = soup.find('div', {'id':'rso'})
 
         # Find section 1 results and append to rso list
-        section1 = soup.find_all('div', {'class':'sATSHe'})
+        section1 = soup.find_all('div', {'class': 'sATSHe'})
         # section1 = soup.find_all('div', {'class':'UDZeY OTFaAf'})
         for div in section1:
 
             # Conditional handling for Twitter result
-            if div.find('h2') and div.find('h2').text == "Twitter Results": 
+            if div.find('h2') and div.find('h2').text == "Twitter Results":
                 rso.append(div.find('div').parent)
 
             # Conditional handling for g-section with header
-            elif div.find('g-section-with-header'): 
+            elif div.find('g-section-with-header'):
                 rso.append(div.find('g-section-with-header').parent)
 
             # Include divs with a "View more" type of button
-            elif div.find('g-more-link'): 
+            elif div.find('g-more-link'):
                 rso.append(div)
 
             # Include footer components that appear in the main column
-            elif div.find('div', {'class':'oIk2Cb'}):
+            elif div.find('div', {'class': 'oIk2Cb'}):
                 rso.append(div)
 
             else:
                 # Handle general results
-                for child in div.find_all('div',  {'class':'g'}): 
+                for child in div.find_all('div', {'class': 'g'}):
                     rso.append(child)
-
         # Find section 2 results and append to rso list
-        section2 = soup.find('div', {'class':'WvKfwe a3spGf'})
+        section2 = soup.find('div', {'class': 'WvKfwe a3spGf'})
         if section2:
             for child in section2.children:
                 rso.append(child)
@@ -104,7 +116,7 @@ def extract_results_column(soup):
     drop_text = {'Twitter Results', ''}
     column = [(cloc, c) for (cloc, c) in column if c.text not in drop_text]
     return column
-    
+
 
 def extract_components(soup):
     """Extract SERP components
@@ -120,7 +132,7 @@ def extract_components(soup):
     cmpts = []
 
     # Top Image Carousel
-    top_bar = soup.find('div', {'id':'appbar'})
+    top_bar = soup.find('div', {'id': 'appbar'})
     if top_bar:
         has_img = top_bar.find(lambda tag: tag.has_attr('src') and not tag.has_attr('data-src'))
         if top_bar.find('g-scrolling-carousel') and has_img:
@@ -132,15 +144,15 @@ def extract_components(soup):
         cmpts.append(('shopping_ad', shopping_ads))
 
     # Top Ads
-    ads = soup.find('div', {'id':'tads'})
-    if ads: 
+    ads = soup.find('div', {'id': 'tads'})
+    if ads:
         cmpts.append(('ad', ads))
 
     column = extract_results_column(soup)
     cmpts.extend(column)
 
     # Bottom Ads
-    ads = soup.find('div', {'id':'tadsb'})
+    ads = soup.find('div', {'id': 'tadsb'})
     if ads:
         cmpts.append(('ad', ads))
 
@@ -156,8 +168,15 @@ def extract_components(soup):
         if rhs_kp:
             # reading from top-to-bottom, left-to-right
             cmpts.append(('knowledge_rhs', rhs_kp))
-            
+
+    # OR CODE -------------------
+    # Featured Snippet
+    featured_snippet = soup.find('div', {'class': "ifM9O"})
+    if featured_snippet:
+        cmpts.append(('knowledge', featured_snippet))
+
     return cmpts
+
 
 def parse_component(cmpt, cmpt_type='', cmpt_rank=0):
     """Parse a SERP component
@@ -184,20 +203,21 @@ def parse_component(cmpt, cmpt_type='', cmpt_rank=0):
     try:
         parser = get_component_parser(cmpt_type)
         parsed_cmpt = parser(cmpt)
-        
+
         # Add cmpt rank to parsed
         if isinstance(parsed_cmpt, list):
             for sub_rank, sub in enumerate(parsed_cmpt):
-                sub.update({'sub_rank':sub_rank, 'cmpt_rank':cmpt_rank})
+                sub.update({'sub_rank': sub_rank, 'cmpt_rank': cmpt_rank})
         else:
-            parsed_cmpt.update({'sub_rank':0, 'cmpt_rank':cmpt_rank})
+            parsed_cmpt.update({'sub_rank': 0, 'cmpt_rank': cmpt_rank})
 
     except Exception:
         log.exception('Parsing Exception')
         err = traceback.format_exc()
-        return [{'type':cmpt_type, 'cmpt_rank':cmpt_rank, 'error':err}]
+        return [{'type': cmpt_type, 'cmpt_rank': cmpt_rank, 'error': err}]
 
     return parsed_cmpt
+
 
 def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
     """Parse a Search Engine Result Page (SERP)
@@ -214,14 +234,16 @@ def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
     soup = webutils.make_soup(serp) if make_soup else serp
     assert type(soup) is BeautifulSoup, 'Input must be BeautifulSoup'
     cmpts = extract_components(soup)
+    # for i in cmpts:
+    #    print(i)
 
     parsed = []
-    if verbose: 
+    if verbose:
         log.info(f'Parsing SERP {serp_id}')
-        
+
     for cmpt_rank, (cmpt_loc, cmpt) in enumerate(cmpts):
         cmpt_type = classify_type(cmpt) if cmpt_loc == 'main' else cmpt_loc
-        if verbose: 
+        if verbose:
             log.info(f'{cmpt_rank} | {cmpt_type}')
         parsed_cmpt = parse_component(cmpt, cmpt_type=cmpt_type, cmpt_rank=cmpt_rank)
         assert isinstance(parsed_cmpt, list), \
@@ -234,5 +256,5 @@ def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
         p['serp_id'] = serp_id
         p['serp_rank'] = serp_rank
         p['lhs_bar'] = soup.find('div', {'class': 'OeVqAd'}) is not None
-        
+
     return parsed

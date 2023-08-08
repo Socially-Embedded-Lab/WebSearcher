@@ -3,6 +3,7 @@
 
 from . import webutils
 
+
 def classify_type(cmpt):
     """Component classifier
 
@@ -12,7 +13,6 @@ def classify_type(cmpt):
     Returns:
         str: A classification of the component type
     """
-    
     # Default unknown
     cmpt_type = "unknown"
     g_tray = cmpt.find("g-tray-header")
@@ -26,8 +26,7 @@ def classify_type(cmpt):
     hybrid = cmpt.find("div", {"class": "ifM9O"})
     twitter = cmpt.find_previous().text == "Twitter Results"
 
-
-    # Checks a g-scrolling-carousel for a specific id to classify as not all 
+    # Checks a g-scrolling-carousel for a specific id to classify as not all
     # top_stories have an h3 tag
     if carousel:
         if "class" in carousel.attrs and carousel.attrs["class"][0] == "F8yfEe":
@@ -42,14 +41,28 @@ def classify_type(cmpt):
 
     if cmpt_type == "unknown":
         cmpt_type = classify_h2_divs(cmpt)
-        
+
     if cmpt_type == "unknown":
         cmpt_type = classify_h3_divs(cmpt)
 
+    # OR CODE -------------------
+    # Find all elements with the "class" attribute within the component
+    all_classes = cmpt.find_all(attrs={"class": True})
+
+    # Extract the classes from the found elements
+    all_classes_list = [element["class"] for element in all_classes]
+
+    # Flatten the list of lists to get all classes as individual items
+    all_classes_flat = [cls for sublist in all_classes_list for cls in sublist]
+
+    all_classes_flat.extend(cmpt.attrs["class"])
+
     if cmpt_type == "unknown" and "class" in cmpt.attrs:
-        if any(s in ["hlcw0c", "MjjYud"] for s in cmpt.attrs["class"]):
+        if any(s in ["hlcw0c", "MjjYud", "yuRUbf"] for s in all_classes_flat):
+        # if any(s in ["hlcw0c", "MjjYud"] for s in all_classes_flat):
+            # if any(s in ["hlcw0c", "MjjYud"] for s in cmpt.attrs["class"]):
             cmpt_type = "general"
-                
+    # --------------------------------
     # Twitter subtype
     if twitter or cmpt_type == "twitter":
         cmpt_type = "twitter_cards" if carousel else "twitter_result"
@@ -104,18 +117,43 @@ h2_text_to_label = {
     "Map Results": "map_results",
     "People also ask": "people_also_ask",
     "Twitter Results": "twitter",
+    # ADDED BY OR
+    'Notícias principais': 'top_stories',
+    'सुर्खियां': 'top_stories',
+    'Notizie principali': 'top_stories',
+    'Principais notícias': 'top_stories',
+    'Schlagzeilen': 'top_stories',
+    'Noticias destacadas': 'top_stories',
+    'À la une': 'top_stories',
+    'Video': 'videos',
+    'Vídeos': 'videos',
 }
+
 
 def classify_h2_divs(cmpt, text_to_label=h2_text_to_label):
     """Check h2 text for string matches"""
-
+    # Or code
+    h2 = None
+    all_h2 = cmpt.find_all("h2")
+    all_h2_text = [h.text for h in all_h2]
+    if not all_h2_text:
+        sub_class = cmpt.find('div', {'class': 'HnYYW'})
+        try:
+            if sub_class.text in text_to_label.keys():
+                h2 = sub_class
+        except:
+            pass
+    else:
+        for i in range(len(all_h2_text)):
+            if all_h2_text[i] in text_to_label.keys():
+                h2 = all_h2[i]
     # Find h2 headers
     h2_list = [
-        cmpt.find("h2"),
-        cmpt.find("div", {'aria-level':"2", "role":"heading"})
+        # cmpt.find("h2"),
+        h2,
+        cmpt.find("div", {'aria-level': "2", "role": "heading"})
     ]
-
-   # Check `h2.text` for string matches
+    # Check `h2.text` for string matches
     for h2 in filter(None, h2_list):
         for text, label in text_to_label.items():
             if h2.text.startswith(text):
@@ -136,17 +174,31 @@ h3_text_to_label = {
     "Recipes": "recipes",
     "Popular products": "products",
     "Related searches": "searches_related",
+    # Added part by OR-------
+    'Vídeos': 'videos',
+    'वीडियो': 'videos',
+    'Video': 'videos',
+    'Vidéos': 'videos',
 }
+
 
 def classify_h3_divs(cmpt, text_to_label=h3_text_to_label):
     """Check h3 text for string matches"""
-    
+    # Or code
+    h3 = None
+    all_h3 = cmpt.find_all("h3")
+    all_h3_text = [h.text for h in all_h3]
+    for i in range(len(all_h3_text)):
+        if all_h3_text[i] in text_to_label.keys():
+            h3 = all_h3[i]
+    # -------------------------
     # Find h3 headers
     h3_list = [
-        cmpt.find("h3"),
-        cmpt.find("div", {'aria-level':"3", "role":"heading"})
+        # cmpt.find("h3"),
+        h3,
+        cmpt.find("div", {'aria-level': "3", "role": "heading"})
     ]
-
+    # print(h3_list)
     for h3 in filter(None, h3_list):
         for text, label in text_to_label.items():
             if h3.text.startswith(text):
@@ -176,8 +228,8 @@ def classify_knowledge_box(cmpt):
 
     condition = {}
     condition['flights'] = (
-        (webutils.check_dict_value(attrs, "jscontroller", "Z2bSc")) |
-        bool(cmpt.find("div", {"jscontroller": "Z2bSc"}))
+            (webutils.check_dict_value(attrs, "jscontroller", "Z2bSc")) |
+            bool(cmpt.find("div", {"jscontroller": "Z2bSc"}))
     )
     condition['maps'] = webutils.check_dict_value(attrs, "data-hveid", "CAMQAA")
     condition['hotels'] = cmpt.find("div", {"class": "zd2Jbb"})
