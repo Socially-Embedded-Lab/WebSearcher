@@ -25,10 +25,18 @@ def parse_twitter_result(cmpt, sub_rank=0):
         cite = header.find('cite')
         if cite:
             parsed['cite'] = cite.text
-    
+    else:
+        try:
+            sub = cmpt.find('div', {'class': 'yuRUbf'})
+            parsed['url'] = sub.find('a')['href']
+        except:
+            pass
     # Get snippet text, timestamp, and tweet url
-    body, timestamp_url = cmpt.find('div', {'class':'tw-res'}).children
-    parsed['text'] = body.text
-    parsed['timestamp'] = timestamp_url.find('span').text
-    parsed['details'] = timestamp_url.find('a')['href']
+    try:
+        body, timestamp_url = cmpt.find('div', {'class':'tw-res'}).children
+        parsed['text'] = body.text
+        parsed['timestamp'] = timestamp_url.find('span').text
+        parsed['details'] = timestamp_url.find('a')['href']
+    except:
+        pass
     return [parsed]

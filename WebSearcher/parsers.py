@@ -54,7 +54,6 @@ def extract_results_column(soup):
     """
     # Check if layout contains left side bar
     left_side_bar = soup.find('div', {'class': 'OeVqAd'})
-
     if not left_side_bar:
         # Extract results from single div
         # OR CODE ---------------
@@ -63,10 +62,26 @@ def extract_results_column(soup):
         if sub_class:
             main = sub_class.find('div', {'id': 'kp-wp-tab-overview'})
         main = soup.find('div', {'id': 'rso'}) if not main else main
+        if len(list(main.children)) == 1:
+            main = main.find('div', {'id': 'kp-wp-tab-overview'})
         # ---------------
-        rso = soup.find('div', {'id': 'rso'})
+        # rso = soup.find('div', {'id': 'rso'})
         drop_tags = {'script', 'style', None}
+        sub_column = []
+        comp_to_remove = []
+        for c in main.children:
+            if c.name == 'div':
+                child = c.find_all('div', {'class': 'ULSxyf', 'data-hveid': ['CB0QAA', 'CHMQAA']})
+                for comp in child:
+                    sub_column.append(('main', comp))
+                    if c not in comp_to_remove:
+                        comp_to_remove.append(('main',c))
         column = [('main', c) for c in main.children if c.name not in drop_tags]
+
+        for comp in sub_column:
+            if comp not in column:
+                column.append(comp)
+        column = [item for item in column if item not in comp_to_remove]
         # column = [('main', c) for c in rso.children if c.name not in drop_tags]
     else:
         # Extract results from two div sections
@@ -235,8 +250,7 @@ def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
     assert type(soup) is BeautifulSoup, 'Input must be BeautifulSoup'
     cmpts = extract_components(soup)
     # for i in cmpts:
-    #    print(i)
-
+    #     print(i)
     parsed = []
     if verbose:
         log.info(f'Parsing SERP {serp_id}')

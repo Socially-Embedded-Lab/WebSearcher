@@ -36,7 +36,6 @@ def parse_video(sub, sub_rank=0):
     # OR Code ---------------------
     # Find all <a> tags within the specific component (e.g., <div class="content">)
     a_tags = sub.find_all('a')
-
     # Initialize the 'url' variable to store the first link that starts with "http" or "https"
     parsed['url'] = None
 
@@ -48,7 +47,10 @@ def parse_video(sub, sub_rank=0):
             break
 
     # parsed['url'] = sub.find('a')['href']
-    parsed['title'] = sub.find('div', {'role': 'heading'}).text
+    try:
+        parsed['title'] = sub.find('div', {'role': 'heading'}).text
+    except:
+        parsed['title'] = sub.find('a').get('aria-label')
 
     details = sub.find_all('div', {'class': 'MjS0Lc'})
     if details:

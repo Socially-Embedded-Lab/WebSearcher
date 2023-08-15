@@ -55,11 +55,14 @@ def classify_type(cmpt):
     # Flatten the list of lists to get all classes as individual items
     all_classes_flat = [cls for sublist in all_classes_list for cls in sublist]
 
-    all_classes_flat.extend(cmpt.attrs["class"])
+    try:
+        all_classes_flat.extend(cmpt.attrs["class"])
+    except:
+        pass
 
     if cmpt_type == "unknown" and "class" in cmpt.attrs:
         if any(s in ["hlcw0c", "MjjYud", "yuRUbf"] for s in all_classes_flat):
-        # if any(s in ["hlcw0c", "MjjYud"] for s in all_classes_flat):
+            # if any(s in ["hlcw0c", "MjjYud"] for s in all_classes_flat):
             # if any(s in ["hlcw0c", "MjjYud"] for s in cmpt.attrs["class"]):
             cmpt_type = "general"
     # --------------------------------
@@ -83,7 +86,7 @@ def classify_type(cmpt):
         cmpt_type = "available_on"
 
     # Check if component is only of class 'g'
-    if webutils.check_dict_value(cmpt.attrs, "class", ["g"]):
+    if webutils.check_dict_value(cmpt.attrs, "class", ["g"]) or 'g' in all_classes_flat and cmpt_type == 'unknown':
         cmpt_type = "general"
 
     # check for people also ask
@@ -93,6 +96,15 @@ def classify_type(cmpt):
     # check for flights, maps, hotels, events, jobs
     if cmpt_type == "unknown":
         cmpt_type = classify_knowledge_box(cmpt)
+
+    # Check for Questions & Answers
+    if cmpt_type == "unknown":
+        try:
+            text = cmpt.find('div', {'class': 'Czd4wf'}).text
+            if text == 'Questions & answers':
+                cmpt_type = 'questions_and_answers'
+        except:
+            pass
 
     # Return type or unknown (default)
     return cmpt_type
@@ -127,6 +139,10 @@ h2_text_to_label = {
     'À la une': 'top_stories',
     'Video': 'videos',
     'Vídeos': 'videos',
+    'Noticias principales': 'top_stories',
+    'En çok okunan haberler': 'top_stories',
+    "Top stories": "top_stories",
+    "Videos": "videos",
 }
 
 
@@ -179,6 +195,16 @@ h3_text_to_label = {
     'वीडियो': 'videos',
     'Video': 'videos',
     'Vidéos': 'videos',
+    'סרטונים': 'videos',
+    "Twitter": "twitter",
+    'الفيديوهات': 'videos',
+    'أهمّ الأخبار': 'top_stories',
+    'בראש החדשות': 'top_stories',
+    'Видео': 'videos',
+    'Главные новости': 'top_stories',
+    '影片': 'videos',
+    '動画': 'videos',
+    '视频': 'videos',
 }
 
 
@@ -188,11 +214,20 @@ def classify_h3_divs(cmpt, text_to_label=h3_text_to_label):
     h3 = None
     all_h3 = cmpt.find_all("h3")
     all_h3_text = [h.text for h in all_h3]
+
+    # Check for Twitter inside the string of header
+    for i in range(len(all_h3_text)):
+        split_str = all_h3_text[i].split()
+        for word in split_str:
+            if word == 'Twitter':
+                return text_to_label[word]
+
     for i in range(len(all_h3_text)):
         if all_h3_text[i] in text_to_label.keys():
             h3 = all_h3[i]
     # -------------------------
     # Find h3 headers
+
     h3_list = [
         # cmpt.find("h3"),
         h3,
