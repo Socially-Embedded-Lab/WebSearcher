@@ -1,5 +1,6 @@
 import re
 
+
 def parse_general_results(cmpt):
     """Parse a general component
 
@@ -15,10 +16,11 @@ def parse_general_results(cmpt):
     """
 
     # Legacy compatibility
-    subs = cmpt.find_all('div', {'class':['g']})
-    subs = subs if subs else [cmpt] 
-    
+    subs = cmpt.find_all('div', {'class': ['g', 'g dFd2Tb']})
+    subs = subs if subs else [cmpt]
+
     return [parse_general_result(sub, sub_rank) for sub_rank, sub in enumerate(subs)]
+
 
 def parse_general_result(sub, sub_rank=0):
     """Parse a general subcomponent
@@ -30,49 +32,50 @@ def parse_general_result(sub, sub_rank=0):
         dict : parsed subresult
     """
     parsed = {
-        'type': 'general', 
+        'type': 'general',
         'sub_rank': sub_rank
     }
-
     # Get title
     # title_div = sub.find('h3').find('a')
-    title_div1 = sub.find('div', {'class':'rc'})
-    title_div2 = sub.find('div', {'class':'yuRUbf'})
+    title_div1 = sub.find('div', {'class': 'rc'})
+    title_div2 = sub.find_all('div', {'class': 'yuRUbf'})
     # OR CODE -------------
-    title_div3 = sub.find('div', {'class':'ct3b9e'})
-    #--------------------
+    title_div3 = sub.find_all('div', {'class': 'ct3b9e'})
+    # --------------------
     if title_div1:
         parsed['title'] = title_div1.find('h3').text
         parsed['url'] = title_div1.find('a')['href']
+        title_div = title_div1
     elif title_div2:
         parsed['title'] = title_div2.find('h3').text
         parsed['url'] = title_div2.find('a')['href']
+        title_div = title_div2
     elif title_div3:
         parsed['title'] = title_div3.find('h3').text
         parsed['url'] = title_div3.find('a')['href']
-
+        title_div = title_div3
     # Get citation
     cite = sub.find('cite')
     parsed['cite'] = cite.text if cite else None
-    
+
     # Get design details
-    top_logo = sub.find('img', {'class':'xA33Gc'})
-    top_menu = sub.find('div', {'class':'yWc32e'})
-    
+    top_logo = sub.find('img', {'class': 'xA33Gc'})
+    top_menu = sub.find('div', {'class': 'yWc32e'})
+
     parsed['details'] = 'top_cite_logo' if top_logo else ''
-    
+
     if top_menu:
         # If menu has children, ignore URLs and get correct title URL
         has_children = list(top_menu.children)
-        if has_children: 
-            parsed['details'] += '_menu' 
+        if has_children:
+            parsed['details'] += '_menu'
 
             for child in top_menu.children:
                 child.decompose()
             parsed['url'] = title_div.find('a')['href']
 
     # Get snippet text
-    body = sub.find('span', {'class':'st'})
+    body = sub.find('span', {'class': 'st'})
     if body:
         if ' - ' in body.text[:20]:
             split_body = body.text.split(' - ')
@@ -94,15 +97,15 @@ def parse_general_result(sub, sub_rank=0):
     elif sub.find('div', {'class': ['P1usbc', 'IThcWe']}):
         parsed['subtype'] = 'submenu'
         alinks = sub.find('div', {'class': ['P1usbc', 'IThcWe']}).find_all('a')
-        #parsed['details'] = parse_general_extra(sub)
+        # parsed['details'] = parse_general_extra(sub)
         parsed['details'] = [parse_alink(a) for a in alinks if 'href' in a.attrs]
     elif sub.find('table'):
         parsed['subtype'] = 'submenu'
         alinks = sub.find('table').find_all('a')
         parsed['details'] = [parse_alink(a) for a in alinks if 'href' in a.attrs]
     elif sub.find('div', {'class': ['osl', 'jYOxx']}):
-        parsed['subtype'] = 'submenu_mini'  
-        alinks = sub.find('div', {'class':['osl','jYOxx']}).find_all('a')
+        parsed['subtype'] = 'submenu_mini'
+        alinks = sub.find('div', {'class': ['osl', 'jYOxx']}).find_all('a')
         parsed['details'] = [parse_alink(a) for a in alinks if 'href' in a.attrs]
     elif sub.find('div', {'class': re.compile('fG8Fp')}):
         alinks = sub.find('div', {'class': re.compile('fG8Fp')}).find_all('a')
@@ -112,16 +115,19 @@ def parse_general_result(sub, sub_rank=0):
             parsed['details'] = [parse_alink(a) for a in alinks if 'href' in a.attrs]
         elif '$' in text:
             parsed['subtype'] = 'submenu_product'
-            parsed['details'] = parse_product(text) 
+            parsed['details'] = parse_product(text)
     return parsed
 
-def parse_alink(a): 
-    return {'text':a.text,'url':a.attrs['href']}
+
+def parse_alink(a):
+    return {'text': a.text, 'url': a.attrs['href']}
+
 
 def parse_general_extra(sub):
     """Parse submenu that appears below some general components"""
-    item_list = list(sub.find('div', {'class':'P1usbc'}).children)
+    item_list = list(sub.find('div', {'class': 'P1usbc'}).children)
     return ' | '.join([i.text for i in item_list])
+
 
 def parse_ratings(text):
     """Parse ratings that appear below some general components"""
@@ -133,22 +139,23 @@ def parse_ratings(text):
         details = {'rating': float(rating)}
     else:
         details = {'rating': rating}
-    
+
     if len(text) > 1:
         str_match_0 = re.compile(' vote[s]?| review[s]?')
         str_match_1 = re.compile('Review by')
         if str_match_0.search(text[1]):
             reviews = re.split(str_match_0, text[1])[0]
-            reviews = reviews.replace(',','')[1:] # [1:] drops unicode char
+            reviews = reviews.replace(',', '')[1:]  # [1:] drops unicode char
             details['reviews'] = int(reviews)
         elif str_match_1.search(text[1]):
             details['reviews'] = 1
-        
+
     # could parse other fields
     # (price, os, category) for products
     # (time, cals) for recipes
 
     return details
+
 
 def parse_product(text):
     """Parse price and stock that appears below some general components"""

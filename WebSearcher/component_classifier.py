@@ -143,6 +143,9 @@ h2_text_to_label = {
     'En çok okunan haberler': 'top_stories',
     "Top stories": "top_stories",
     "Videos": "videos",
+    'Главные новости': 'top_stories',
+    '주요 뉴스': 'top_stories',
+    '동영상': 'videos',
 }
 
 
@@ -205,6 +208,7 @@ h3_text_to_label = {
     '影片': 'videos',
     '動画': 'videos',
     '视频': 'videos',
+    '동영상': 'videos',
 }
 
 

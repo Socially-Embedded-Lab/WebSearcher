@@ -29,7 +29,6 @@ country_dict_long = {'Egypt': 'Cairo,Cairo Governorate,Egypt', 'Israel': 'Jerusa
                      }
 
 
-
 def run_parser(html_date, entered_path=None):
     if entered_path:
         directory_path = entered_path
@@ -42,7 +41,7 @@ def run_parser(html_date, entered_path=None):
     # Filter HTML files from the list
     html_files = [file for file in file_list if file.endswith(".html")]
 
-    # html_files = [file for file in html_files if file == '79-B_Japan_Japanese.html']
+    html_files = [file for file in html_files if file == '13_Mammal_en_US.html']
 
     se = ws.SearchEngine()
     vars(se)
@@ -73,17 +72,31 @@ def run_parser(html_date, entered_path=None):
         se.html = html_code
         se.parse_results()
         urls = []
+        check_url = []
+        serp_rank = 1
         for dict in se.results:
             try:
                 if 'url' not in dict.keys():
                     for dict_in_urls in dict['details']['urls']:
-                        urls.append(dict_in_urls['url'])
+                        if dict_in_urls['url'] in check_url:
+                            continue
+                        if dict_in_urls['url'] != '' and (dict_in_urls['url'].startswith('http') or dict_in_urls['url'].startswith('https')):
+                            check_url.append(dict_in_urls['url'])
+                            urls.append((serp_rank, dict_in_urls['url']))
                 else:
-                    urls.append(dict['url'])
+                    if dict['url'] in check_url:
+                        continue
+                    if dict['url'] != '' and (dict['url'].startswith('http') or dict['url'].startswith('https')):
+                        check_url.append(dict['url'])
+                        urls.append((serp_rank, dict['url']))
+                dict['serp_rank'] = serp_rank
+                serp_rank += 1
             except:
+                dict['serp_rank'] = None
                 continue
+        print(len(urls))
+        print(urls)
         compare_dict[tuple(key_parts)] = urls
-        # print(urls)
     return compare_dict
 
 
@@ -108,30 +121,37 @@ def check_url_matches(dict_urls, df):
         langs = row['langs']
         country = row['country']
         link = row['Link']
+        link_rank = row['Result number']
         key = (term_id, country, langs)
 
         if key in dict_urls:
             decoded_link = unquote(link)
-            condition1 = any(decoded_link == unquote(url) for url in dict_urls[key])
+            condition1 = any(decoded_link == unquote(url[1]) for url in dict_urls[key])
             condition2 = any(
-                tldextract.extract(decoded_link).registered_domain == tldextract.extract(unquote(url)).registered_domain
+                tldextract.extract(decoded_link).registered_domain == tldextract.extract(
+                    unquote(url[1])).registered_domain
                 for url in dict_urls[key] if "youtube" not in decoded_link
             )
 
             if condition1 or condition2:
                 match_index = next(
-                    (idx for idx, url in enumerate(dict_urls[key]) if decoded_link == unquote(url)
-                     or tldextract.extract(decoded_link).registered_domain == tldextract.extract(
-                        url).registered_domain),
+                    (idx for idx, url in enumerate(dict_urls[key]) if decoded_link == unquote(url[1])
+                     or (tldextract.extract(decoded_link).registered_domain == tldextract.extract(
+                        url[1]).registered_domain and "youtube" not in decoded_link)),
                     None
                 )
                 success += 1
                 match_condition = "Condition 1" if condition1 else "Condition 2"
+                rank_equal = False
+                if link_rank == dict_urls[key][match_index][0]:
+                    rank_equal = True
                 matching_results.append(
-                    [match_condition, term_id, country, langs, decoded_link, dict_urls[key][match_index]])
+                    [match_condition, term_id, country, langs, decoded_link, dict_urls[key][match_index][1],
+                     rank_equal])
             else:
-                failed_urls = ", ".join(dict_urls[key])
-                matching_results.append(["Failed", term_id, country, langs, decoded_link, failed_urls])
+                # failed_urls = ", ".join(dict_urls[key])
+                failed_urls = None
+                matching_results.append(["Failed", term_id, country, langs, decoded_link, failed_urls, False])
                 fails += 1
     return matching_results, success, fails
 
@@ -149,7 +169,7 @@ def filter_csv_by_date(csv_filename, target_date):
     """
     df = pd.read_csv(csv_filename)
     filtered_df = df[df["Collection date"] == target_date]
-    return filtered_df[['term_id', 'Collection date', 'langs', 'country', 'Link']]
+    return filtered_df[['term_id', 'Collection date', 'langs', 'country', 'Link', 'Result number']]
 
 
 def run(html_date, entered_path=None, run_parser_flag=False, save_dict=False):
@@ -183,17 +203,40 @@ def save_progress_to_csv(success, fails, extraction_date):
     print("Row added to the CSV file successfully.")
 
 
+def calculate_recall_precision(parser_output, ground_truth):
+    true_positives = 0
+    identified_by_parser = 0
+    relevant_in_ground_truth = 0
+    for l in ground_truth.values():
+        relevant_in_ground_truth += len(l)
+
+    for key, parser_urls in parser_output.items():
+        if key in ground_truth:
+            ground_truth_urls = ground_truth[key]
+            for parser_url in parser_urls:
+                decoded_parser_url = unquote(parser_url[1])
+                condition1 = any(decoded_parser_url == unquote(url) for url in ground_truth_urls)
+                if condition1:
+                    true_positives += 1
+
+            identified_by_parser += len(parser_urls)
+    recall = true_positives / relevant_in_ground_truth
+    precision = true_positives / identified_by_parser
+
+    return recall, precision
+
+
 if __name__ == "__main__":
     start = time.time()
 
-    html_date = '20221204'
-    # path = 'C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/קונספירציות - אנגלית, עברית, רוסית, ערבית, יפנית, סינית, טייוואנית, אינדונזית, קוראנית, ויאטנמית/html/8.8.2022'
+    html_date = '20220818'
+    # path = 'C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/קונספירציות - אנגלית, עברית, רוסית, ערבית, יפנית, סינית, טייוואנית, אינדונזית, קוראנית, ויאטנמית/html/28.6.2022'
     path = 'C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/roniresult1403-20220322T200228Z-001/roniresult1403/result'
-    parsed_dict = run(html_date, run_parser_flag=True)
+    parsed_dict = run(html_date, path, run_parser_flag=True)
     CSV_FILENAME = "C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/coded_srs.csv"
     # TARGET_DATE = "18.8.2022"
-    TARGET_DATE = "4.12.2022"
-    # TARGET_DATE = "14.3.2022"
+    # TARGET_DATE = "4.12.2022"
+    TARGET_DATE = "14.3.2022"
     # TARGET_DATE = "8.8.2022"
     # TARGET_DATE = "28.6.2022"
     # TARGET_DATE = "28.7.2022"
@@ -201,7 +244,7 @@ if __name__ == "__main__":
 
     matching_results, success, fails = check_url_matches(parsed_dict, df)
 
-    columns = ["Condition", "term_id", "country", "langs", "decoded_link", "matched_url"]
+    columns = ["Condition", "term_id", "country", "langs", "decoded_link", "matched_url", "matched_rank"]
     matching_results_df = pd.DataFrame(matching_results, columns=columns)
     # matching_results_df.to_csv("C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/matching_results_df.csv", encoding='utf-8', index=False)
     # Set the display options to show all rows and columns
@@ -216,3 +259,40 @@ if __name__ == "__main__":
     if save_progress:
         extraction_date = TARGET_DATE
         save_progress_to_csv(success, fails, extraction_date)
+
+    # # Recall and Precision of the parser across all data
+    # ground_truth_df = pd.read_csv("C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/coded_srs.csv")
+    #
+    # dataset_paths = [
+    #     ('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/roniresult1403-20220322T200228Z-001/roniresult1403'
+    #      '/result', '14.3.2022'),
+    #     # ('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/קונספירציות - אנגלית, עברית, רוסית, ערבית, יפנית, '
+    #     #  'סינית, טייוואנית, אינדונזית, קוראנית, ויאטנמית/html/8.8.2022', '8.8.2022'),
+    #     # ('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/קונספירציות - אנגלית, עברית, רוסית, ערבית, יפנית, '
+    #     #  'סינית, טייוואנית, אינדונזית, קוראנית, ויאטנמית/html/28.6.2022', '28.6.2022'),
+    #     # ('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/קונספירציות - אנגלית, עברית, רוסית, ערבית, יפנית, '
+    #     #  'סינית, טייוואנית, אינדונזית, קוראנית, ויאטנמית/html/28.7.2022', '28.7.2022'),
+    #     ('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/20220818-html/html', '18.8.2022'),
+    #     ('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/20221204-html/html', '4.12.2022')]
+    #
+    # for dataset_path, dataset_date in dataset_paths:
+    #     # Run your parser and get the output
+    #     parser_output = run(dataset_date, dataset_path, run_parser_flag=True)
+    #
+    #     # Filter the ground truth data based on the dataset date
+    #     filtered_ground_truth = ground_truth_df[ground_truth_df['Collection date'] == dataset_date]
+    #
+    #     # Convert the filtered ground truth data to a dictionary
+    #     ground_truth = {}
+    #     for index, row in filtered_ground_truth.iterrows():
+    #         key = (row['term_id'], row['country'], row['langs'])
+    #         url = row['Link']
+    #         if key not in ground_truth:
+    #             ground_truth[key] = []
+    #         ground_truth[key].append(url)
+    #     # Calculate recall and precision for this dataset
+    #     recall, precision = calculate_recall_precision(parser_output, ground_truth)
+    #
+    #     print(f"Dataset Date: {dataset_date}")
+    #     print("Recall:", recall)
+    #     print("Precision:", precision)

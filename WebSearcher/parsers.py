@@ -251,6 +251,7 @@ def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
     cmpts = extract_components(soup)
     # for i in cmpts:
     #     print(i)
+    cmpts = [cmpts[5]]
     parsed = []
     if verbose:
         log.info(f'Parsing SERP {serp_id}')
