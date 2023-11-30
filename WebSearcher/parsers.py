@@ -52,37 +52,32 @@ def extract_results_column(soup):
     Returns:
         list: a list of HTML result components
     """
-    # Check if layout contains left side bar
+    # Check if layout contains left side-bar
     left_side_bar = soup.find('div', {'class': 'OeVqAd'})
     if not left_side_bar:
         # Extract results from single div
         # OR CODE ---------------
-        sub_class = soup.find('div', {'class': 'MjjYud'})
-        main = None
-        if sub_class:
-            main = sub_class.find('div', {'id': 'kp-wp-tab-overview'})
-        main = soup.find('div', {'id': 'rso'}) if not main else main
+        main = soup.find('div', {'id': 'rso'})
         if len(list(main.children)) == 1:
             main = main.find('div', {'id': 'kp-wp-tab-overview'})
-        # ---------------
-        # rso = soup.find('div', {'id': 'rso'})
         drop_tags = {'script', 'style', None}
         sub_column = []
-        comp_to_remove = []
         for c in main.children:
+            if c.name in drop_tags:
+                continue
+            sub_main = c.find('div', {'class': 'WvKfwe'})
+            if sub_main:
+                c = sub_main
             if c.name == 'div':
                 child = c.find_all('div', {'class': 'ULSxyf', 'data-hveid': ['CB0QAA', 'CHMQAA']})
+                if not child:
+                    child = c.find_all('div', {'class': 'g Ww4FFb vt6azd tF2Cxc'})
                 for comp in child:
                     sub_column.append(('main', comp))
-                    if c not in comp_to_remove:
-                        comp_to_remove.append(('main',c))
         column = [('main', c) for c in main.children if c.name not in drop_tags]
-
         for comp in sub_column:
             if comp not in column:
                 column.append(comp)
-        column = [item for item in column if item not in comp_to_remove]
-        # column = [('main', c) for c in rso.children if c.name not in drop_tags]
     else:
         # Extract results from two div sections
         rso = []
@@ -146,6 +141,7 @@ def extract_components(soup):
 
     cmpts = []
 
+
     # Top Image Carousel
     top_bar = soup.find('div', {'id': 'appbar'})
     if top_bar:
@@ -162,6 +158,11 @@ def extract_components(soup):
     ads = soup.find('div', {'id': 'tads'})
     if ads:
         cmpts.append(('ad', ads))
+
+    # Featured Snippet
+    featured_snippet = soup.find('div', {'class': ["ifM9O", 'M8OgIe']})
+    if featured_snippet:
+        cmpts.append(('knowledge', featured_snippet))
 
     column = extract_results_column(soup)
     cmpts.extend(column)
@@ -184,11 +185,6 @@ def extract_components(soup):
             # reading from top-to-bottom, left-to-right
             cmpts.append(('knowledge_rhs', rhs_kp))
 
-    # OR CODE -------------------
-    # Featured Snippet
-    featured_snippet = soup.find('div', {'class': "ifM9O"})
-    if featured_snippet:
-        cmpts.append(('knowledge', featured_snippet))
 
     return cmpts
 
@@ -251,7 +247,7 @@ def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
     cmpts = extract_components(soup)
     # for i in cmpts:
     #     print(i)
-    # cmpts = [cmpts[5]]
+    # cmpts = [cmpts[0]]
     parsed = []
     if verbose:
         log.info(f'Parsing SERP {serp_id}')

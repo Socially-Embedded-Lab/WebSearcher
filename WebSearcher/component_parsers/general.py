@@ -18,8 +18,22 @@ def parse_general_results(cmpt):
     # Legacy compatibility
     subs = cmpt.find_all('div', {'class': ['g', 'g dFd2Tb']})
     subs = subs if subs else [cmpt]
-
-    return [parse_general_result(sub, sub_rank) for sub_rank, sub in enumerate(subs)]
+    total_subs = None
+    all_subs = []
+    for sub in subs:
+        total_subs = sub.find_all('div', {'class': 'rc'})
+        if total_subs:
+            break
+        else:
+            total_subs = sub.find_all('div', {'class': 'yuRUbf'})
+            if total_subs:
+                all_subs.extend(total_subs)
+            else:
+                total_subs = sub.find_all('div', {'class': 'ct3b9e'})
+                if total_subs:
+                    all_subs.extend(total_subs)
+    # return [parse_general_result(sub, sub_rank) for sub_rank, sub in enumerate(subs)]
+    return [parse_general_result(sub, sub_rank) for sub_rank, sub in enumerate(all_subs)]
 
 
 def parse_general_result(sub, sub_rank=0):
@@ -31,29 +45,26 @@ def parse_general_result(sub, sub_rank=0):
     Returns:
         dict : parsed subresult
     """
-    parsed = {
-        'type': 'general',
-        'sub_rank': sub_rank
-    }
+    parsed = {'type': 'general', 'sub_rank': sub_rank, 'title': sub.find('h3').text, 'url': sub.find('a')['href']}
     # Get title
     # title_div = sub.find('h3').find('a')
-    title_div1 = sub.find('div', {'class': 'rc'})
-    title_div2 = sub.find_all('div', {'class': 'yuRUbf'})
-    # OR CODE -------------
-    title_div3 = sub.find_all('div', {'class': 'ct3b9e'})
-    # --------------------
-    if title_div1:
-        parsed['title'] = title_div1.find('h3').text
-        parsed['url'] = title_div1.find('a')['href']
-        title_div = title_div1
-    elif title_div2:
-        parsed['title'] = title_div2.find('h3').text
-        parsed['url'] = title_div2.find('a')['href']
-        title_div = title_div2
-    elif title_div3:
-        parsed['title'] = title_div3.find('h3').text
-        parsed['url'] = title_div3.find('a')['href']
-        title_div = title_div3
+    # title_div1 = sub.find('div', {'class': 'rc'})
+    # title_div2 = sub.find_all('div', {'class': 'yuRUbf'})
+    # # OR CODE -------------
+    # title_div3 = sub.find_all('div', {'class': 'ct3b9e'})
+    # # --------------------
+    # if title_div1:
+    #     parsed['title'] = title_div1.find('h3').text
+    #     parsed['url'] = title_div1.find('a')['href']
+    #     title_div = title_div1
+    # elif title_div2:
+    #     parsed['title'] = title_div2.find('h3').text
+    #     parsed['url'] = title_div2.find('a')['href']
+    #     title_div = title_div2
+    # elif title_div3:
+    #     parsed['title'] = title_div3.find('h3').text
+    #     parsed['url'] = title_div3.find('a')['href']
+    #     title_div = title_div3
     # Get citation
     cite = sub.find('cite')
     parsed['cite'] = cite.text if cite else None

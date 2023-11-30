@@ -167,11 +167,12 @@ def classify_h2_divs(cmpt, text_to_label=h2_text_to_label):
             if all_h2_text[i] in text_to_label.keys():
                 h2 = all_h2[i]
     # Find h2 headers
+    list_of_headers = cmpt.find_all("div", {'aria-level': "2", "role": "heading"})
     h2_list = [
-        # cmpt.find("h2"),
-        h2,
-        cmpt.find("div", {'aria-level': "2", "role": "heading"})
+        h2
     ]
+    for h in list_of_headers:
+        h2_list.append(h)
     # Check `h2.text` for string matches
     for h2 in filter(None, h2_list):
         for text, label in text_to_label.items():
