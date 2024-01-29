@@ -7,6 +7,9 @@ import tldextract
 from urllib.parse import unquote
 import datetime
 import csv
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import kendalltau
 
 langs_dict = {
     'en': 'English',
@@ -28,90 +31,6 @@ country_dict_long = {'Egypt': 'Cairo,Cairo Governorate,Egypt', 'Israel': 'Jerusa
                      'Japan': 'Tokyo,Tokyo,Japan', 'Taiwan': 'Taipei City,Taiwan',
                      }
 
-
-# def run_parser(html_date, entered_path=None):
-#     if entered_path:
-#         directory_path = entered_path
-#     else:
-#         directory_path = f"C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/{html_date}-html/html"
-#
-#     # Get a list of all files in the directory
-#     file_list = os.listdir(directory_path)
-#
-#     # Filter HTML files from the list
-#     html_files = [file for file in file_list if file.endswith(".html")]
-#
-#     # html_files = [file for file in html_files if file == '43_Brasilia,Federal District,Brazil_Portuguese.html']
-#
-#     se = ws.SearchEngine()
-#     vars(se)
-#     compare_dict = {}
-#     # Iterate over each HTML file and apply the search function
-#     for html_file in html_files:
-#         file_path = os.path.join(directory_path, html_file)
-#         # Split the file name based on underscores
-#         key_parts = html_file.split("_")
-#         # Remove the file extension from the last part
-#         key_parts[-1] = os.path.splitext(key_parts[-1])[0]
-#
-#         if len(key_parts) > 3:
-#             if key_parts and key_parts[0].isdigit():
-#                 key_parts.pop(1)
-#                 key_parts = [key_parts[0], country_dict_short[key_parts[2]], langs_dict[key_parts[1]]]
-#             else:
-#                 key_parts.pop(2)
-#                 key_parts = [key_parts[2], country_dict_short[key_parts[1]], langs_dict[key_parts[0]]]
-#         else:
-#             if key_parts[1] in country_dict_long.keys():
-#                 temp = key_parts[1]
-#                 key_parts[1] = country_dict_long[temp]
-#         with open(file_path, "rb") as html_page:
-#             html_code = html_page.read()
-#         se.search('book')
-#         print(html_file)
-#         se.html = html_code
-#         se.parse_results()
-#         urls = []
-#         check_url = []
-#         serp_rank = 1
-#         for dict in se.results:
-#             try:
-#                 if 'url' not in dict.keys():
-#                     for dict_in_urls in dict['details']['urls']:
-#                         if dict_in_urls['url'] in check_url:
-#                             continue
-#                         if dict_in_urls['url'] != '' and (dict_in_urls['url'].startswith('http') or dict_in_urls['url'].startswith('https')):
-#                             check_url.append(dict_in_urls['url'])
-#                             urls.append((serp_rank, dict_in_urls['url']))
-#                 elif dict['type'] == 'ad':
-#                     if dict['url'] in check_url:
-#                         continue
-#                     if dict['url'] != '' and (dict['url'].startswith('http') or dict['url'].startswith('https')):
-#                         check_url.append(dict['url'])
-#                         urls.append((serp_rank, dict['url']))
-#                     try:
-#                         for dict_in_urls in dict['details']['urls']:
-#                             if dict_in_urls['url'] in check_url:
-#                                 continue
-#                             if dict_in_urls['url'] != '' and (
-#                                     dict_in_urls['url'].startswith('http') or dict_in_urls['url'].startswith('https')):
-#                                 check_url.append(dict_in_urls['url'])
-#                                 urls.append((serp_rank, dict_in_urls['url']))
-#                     except:
-#                         pass
-#                 else:
-#                     if dict['url'] in check_url:
-#                         continue
-#                     if dict['url'] != '' and (dict['url'].startswith('http') or dict['url'].startswith('https')):
-#                         check_url.append(dict['url'])
-#                         urls.append((serp_rank, dict['url']))
-#                 dict['serp_rank'] = serp_rank
-#                 serp_rank += 1
-#             except:
-#                 dict['serp_rank'] = None
-#                 continue
-#         compare_dict[tuple(key_parts)] = urls
-#     return compare_dict
 
 def get_directory_path(html_date, entered_path=None):
     """
@@ -147,17 +66,24 @@ def parse_html_file(file_path, se):
     se.html = html_code
     se.parse_results()
     urls = []
-    check_url = []
+    # check_url = []
+    # for i in se.results:
+    #     print(i)
+    # print('-------------------')
     serp_rank = 1
-    for result_dict in se.results:
+    # remove duplicate dictionaries from results
+    result_cmpts = process_and_remove_duplicates(se.results)
+    # for i in result_cmpts:
+    #     print(i)
+    for result_dict in result_cmpts:
         # print(result_dict)
         if result_dict['type'] == 'shopping_ads':
             continue
         if result_dict['type'] == 'knowledge':
             try:
-                if result_dict['url'] in check_url:
-                    continue
-                check_url.append(result_dict['url'])
+                # if result_dict['url'] in check_url:
+                #     continue
+                # check_url.append(result_dict['url'])
                 urls.append((serp_rank, result_dict['url']))
                 serp_rank += 1
                 continue
@@ -166,29 +92,29 @@ def parse_html_file(file_path, se):
         try:
             if 'url' not in result_dict.keys():
                 for dict_in_urls in result_dict['details']['urls']:
-                    if dict_in_urls['url'] in check_url:
-                        continue
+                    # if dict_in_urls['url'] in check_url:
+                    #     continue
                     if dict_in_urls['url'] != '' and (
                             dict_in_urls['url'].startswith('http') or dict_in_urls['url'].startswith('https')):
-                        check_url.append(dict_in_urls['url'])
+                        # check_url.append(dict_in_urls['url'])
                         urls.append((serp_rank, dict_in_urls['url']))
                         serp_rank += 1
                         continue
             elif result_dict['type'] == 'ad':
-                if result_dict['url'] in check_url:
-                    continue
+                # if result_dict['url'] in check_url:
+                #     continue
                 if result_dict['url'] != '' and (
                         result_dict['url'].startswith('http') or result_dict['url'].startswith('https')):
-                    check_url.append(result_dict['url'])
+                    # check_url.append(result_dict['url'])
                     urls.append((serp_rank, result_dict['url']))
                     serp_rank += 1
                 try:
                     for dict_in_urls in result_dict['details']:
-                        if dict_in_urls['url'] in check_url:
-                            continue
+                        # if dict_in_urls['url'] in check_url:
+                        #     continue
                         if dict_in_urls['url'] != '' and (
                                 dict_in_urls['url'].startswith('http') or dict_in_urls['url'].startswith('https')):
-                            check_url.append(dict_in_urls['url'])
+                            # check_url.append(dict_in_urls['url'])
                             urls.append((serp_rank, dict_in_urls['url']))
                             serp_rank += 1
                 except:
@@ -196,16 +122,19 @@ def parse_html_file(file_path, se):
                 finally:
                     continue
             else:
-                if result_dict['url'] in check_url:
-                    continue
+                # if result_dict['url'] in check_url:
+                #     continue
                 if result_dict['url'] != '' and (
                         result_dict['url'].startswith('http') or result_dict['url'].startswith('https')):
-                    check_url.append(result_dict['url'])
+                    # check_url.append(result_dict['url'])
                     urls.append((serp_rank, result_dict['url']))
                     serp_rank += 1
         except:
             result_dict['serp_rank'] = None
             continue
+    for tup in urls:
+        if tup[1] == '':
+            urls.remove(tup)
     return urls
 
 
@@ -221,7 +150,7 @@ def run_parser(html_date, entered_path=None):
            dict: A dictionary mapping tuple keys (parsed from filenames) to lists of URLs.
        """
     directory_path = get_directory_path(html_date, entered_path)
-    if directory_path.endswith("html"):
+    if directory_path.endswith(".html"):
         html_files = [directory_path]
     else:
         file_list = os.listdir(directory_path)
@@ -233,8 +162,8 @@ def run_parser(html_date, entered_path=None):
 
     compare_dict = {}
     for html_file in html_files:
-        if directory_path.endswith("html"):
-            html_file = directory_path.split("\\")[-1]
+        if directory_path.endswith(".html"):
+            html_file = directory_path.split("/")[-1]
             file_path = directory_path
         else:
             file_path = os.path.join(directory_path, html_file)
@@ -259,6 +188,18 @@ def run_parser(html_date, entered_path=None):
         compare_dict[tuple(key_parts)] = urls
 
     return compare_dict
+
+
+def process_and_remove_duplicates(list_of_dicts):
+    l = list({(v.get('cite', None), v.get('title', None), v.get('url', None)): v for v in list_of_dicts}.values())
+
+    # Remove specified keys from each dictionary
+    list_of_dicts = [{k: v for k, v in d.items() if k not in ['cmpt_rank', 'serp_rank', 'serp_id', 'title', 'sub_rank']}
+                     for d in l]
+
+    unique_dicts = list({str(i): i for i in list_of_dicts}.values())
+
+    return unique_dicts
 
 
 def check_url_matches(dict_urls, df):
@@ -368,15 +309,28 @@ def calculate_recall_precision(parser_output, ground_truth):
     true_positives = 0
     identified_by_parser = 0
     relevant_in_ground_truth = 0
+    # print(ground_truth)
     for l in ground_truth.values():
         relevant_in_ground_truth += len(l)
-
+    check_index_parser = []
+    check_index_ground_truth = []
+    condition1 = False
     for key, parser_urls in parser_output.items():
         if key in ground_truth:
             ground_truth_urls = ground_truth[key]
-            for parser_url in parser_urls:
+            for parser_index, parser_url in enumerate(parser_urls):
                 decoded_parser_url = unquote(parser_url[1])
-                condition1 = any(decoded_parser_url == unquote(url) for url in ground_truth_urls)
+                # condition1 = any(decoded_parser_url == unquote(url) for url in ground_truth_urls)
+                for ground_truth_index, url in enumerate(ground_truth_urls):
+                    if decoded_parser_url == unquote(url):
+                        if ground_truth_index in check_index_ground_truth:
+                            continue
+                        condition1 = True
+                        check_index_ground_truth.append(ground_truth_index)
+                        check_index_parser.append(parser_index)
+                        break
+                    else:
+                        condition1 = False
                 if condition1:
                     true_positives += 1
 
@@ -384,7 +338,31 @@ def calculate_recall_precision(parser_output, ground_truth):
     recall = true_positives / relevant_in_ground_truth
     precision = true_positives / identified_by_parser
 
-    return recall, precision
+    # Avoid division by zero if precision and recall are both 0
+    if precision + recall == 0:
+        f1_score = 0
+    else:
+        f1_score = 2 * (precision * recall) / (precision + recall)
+
+    return recall, precision, f1_score
+
+
+def calculate_kendall_tau_with_disagreement(list1, list2):
+    # Create a mapping of URL to rank for each list
+    rank_map1 = {url: rank for rank, url in list1}
+    rank_map2 = {url: rank for rank, url in list2}
+
+    # Combine all URLs from both lists
+    all_urls = set(rank_map1.keys()).union(set(rank_map2.keys()))
+
+    # Assign a high rank for missing URLs
+    max_rank = len(all_urls)
+    ranks1 = [rank_map1.get(url, max_rank) for url in all_urls]
+    ranks2 = [rank_map2.get(url, max_rank) for url in all_urls]
+
+    # Calculate Kendall tau coefficient
+    tau, _ = kendalltau(ranks1, ranks2)
+    return tau
 
 
 def filter_df_by_country_lang_term_date(df, country, lang, term, date):
@@ -397,6 +375,7 @@ def compare_ground_truth_to_parser_dict(parser_dict, ground_truth_df):
     matching_results = []
     fails = 0
     success = 0
+    list_check_index = []
     for index, row in ground_truth_df.iterrows():
         date = row['Date']
         term_id = row['Term_id']
@@ -411,29 +390,43 @@ def compare_ground_truth_to_parser_dict(parser_dict, ground_truth_df):
             condition1 = any(decoded_link == unquote(url[1]) for url in parser_dict[key])
 
             if condition1:
-                match_index = next(
-                    (idx for idx, url in enumerate(parser_dict[key]) if decoded_link == unquote(url[1])),
-                    None
-                )
+                # match_index = next(
+                #     (idx for idx, url in enumerate(parser_dict[key]) if decoded_link == unquote(url[1])),
+                #     None
+                # )
+                match_index = None
+                # print(parser_dict)
+                for idx, url in enumerate(parser_dict[key]):
+                    # print(f'decoded_link: {decoded_link}')
+                    # print(f'url[1]: {unquote(url[1])}')
+                    if decoded_link == unquote(url[1]):
+                        if idx in list_check_index:
+                            continue
+                        match_index = idx
+                        list_check_index.append(idx)
+                        break
                 success += 1
                 match_condition = "Fail"
                 if link_rank == parser_dict[key][match_index][0]:
                     match_condition = "Match"
                 matching_results.append(
                     [match_condition, term_id, country, langs, date, decoded_link, parser_dict[key][match_index][1],
-                    link_rank, parser_dict[key][match_index][0]])
+                     link_rank, parser_dict[key][match_index][0]])
             else:
-                # failed_urls = ", ".join(parser_dict[key])
                 failed_urls = None
-                matching_results.append(["Failed", term_id, country, langs, date, decoded_link, failed_urls, link_rank, None])
+                matching_results.append(
+                    ["Failed", term_id, country, langs, date, decoded_link, failed_urls, link_rank, None])
                 fails += 1
+        else:
+            print('I cant find the key in the parser dict')
+            print(key)
     return matching_results, success, fails
 
 
 if __name__ == "__main__":
     # start = time.time()
     #
-    # html_date = '20220818'
+    # html_date = '20230314'
     # # path = 'C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/קונספירציות - אנגלית, עברית, רוסית, ערבית, יפנית, סינית, טייוואנית, אינדונזית, קוראנית, ויאטנמית/html/8.8.2022'
     # # path = 'C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/roniresult1403-20220322T200228Z-001/roniresult1403/result'
     # parsed_dict = run(html_date, run_parser_flag=True)
@@ -503,38 +496,129 @@ if __name__ == "__main__":
     #     print("Precision:", precision)
 
     # --------------------------- Check with the ground truth ---------------------------
-    all_success = 0
-    all_failed = 0
-    html_date = '20220818'
-    data_folder = 'C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data for test/data'
-    ground_truth_df = pd.read_csv(
-        "C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data for test/data for test new.csv")
-    ground_truth_df = ground_truth_df[['Country', 'Language', 'Term_id', 'Date', 'Link', 'Rank']]
-    result_df = pd.DataFrame(
-        columns=['match', 'term_id', 'country', 'langs', 'date', 'decoded_link', 'matched_url', 'decoded_rank', 'matched_rank'])
-    for folder in os.listdir(data_folder):
-        folder_path = os.path.join(data_folder, folder)
-        if os.path.isdir(folder_path):
-            for date in os.listdir(folder_path):
-                html_path = os.path.join(folder_path, date)
-                for html_file in os.listdir(html_path):
-                    # if date != '04.12.2022' or html_file != '5_Paris,Paris,Ile-de-France,France_French.html':
-                    #     continue
-                    html_file_path = os.path.join(html_path, html_file)
-                    parser_result = run(html_date, html_file_path, run_parser_flag=True)
-                    # print(parser_result)
-                    country = list(parser_result.keys())[0][1]
-                    language = list(parser_result.keys())[0][2]
-                    term_id = list(parser_result.keys())[0][0]
-                    filtered_ground_truth = filter_df_by_country_lang_term_date(ground_truth_df, country, language,
-                                                                                term_id, date)
-                    matching_results, success, fails = compare_ground_truth_to_parser_dict(parser_result,
-                                                                                           filtered_ground_truth)
-                    for record in matching_results:
-                        result_df = result_df.append(pd.Series(record, index=result_df.columns), ignore_index=True)
-
-                    all_success += success
-                    all_failed += fails
-    print(f'number of success: {all_success} \n'
-          f'number of fails: {all_failed}')
-    result_df.to_csv('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data for test/result_test.csv', index=False)
+    # all_success = 0
+    # all_failed = 0
+    # all_recall = 0
+    # all_precision = 0
+    # all_f1 = 0
+    # tau_distance = 0
+    # html_date = '20220818'
+    # data_folder = '/Users/ormeiri/Desktop/Work/sci-search/parser/data for test/data'
+    # ground_truth_df = pd.read_csv(
+    #     "/Users/ormeiri/Desktop/Work/sci-search/parser/data for test/data for test new.csv")
+    # ground_truth_df = ground_truth_df[['Country', 'Language', 'Term_id', 'Date', 'Link', 'Rank']]
+    # result_df = pd.DataFrame(
+    #     columns=['match', 'term_id', 'country', 'langs', 'date', 'decoded_link', 'matched_url', 'decoded_rank',
+    #              'matched_rank'])
+    # i = 0
+    # dates_recall_precision = {'18.08.2022': [0, 0, 0, 0], '04.12.2022': [0, 0, 0, 0], '14.03.2023': [0, 0, 0, 0]}
+    # languages_recall_precision = {'English': [0, 0, 0, 0], 'Arabic': [0, 0, 0, 0], 'Hebrew': [0, 0, 0, 0],
+    #                               'Russian': [0, 0, 0, 0], 'French': [0, 0, 0, 0],
+    #                               'Spanish': [0, 0, 0, 0], 'Swahili': [0, 0, 0, 0], 'Afrikaans': [0, 0, 0, 0],
+    #                               'Indonesian': [0, 0, 0, 0],
+    #                               'Farsi': [0, 0, 0, 0], 'Chinese': [0, 0, 0, 0], 'Vietnamese': [0, 0, 0, 0],
+    #                               'Korean': [0, 0, 0, 0], 'Ukrainian': [0, 0, 0, 0],
+    #                               'Taiwanese': [0, 0, 0, 0], 'Turkish': [0, 0, 0, 0], 'German': [0, 0, 0, 0],
+    #                               'Italian': [0, 0, 0, 0], 'Portuguese': [0, 0, 0, 0],
+    #                               'Polish': [0, 0, 0, 0], 'Hindi': [0, 0, 0, 0], 'Zulu': [0, 0, 0, 0]}
+    # for folder in os.listdir(data_folder):
+    #     folder_path = os.path.join(data_folder, folder)
+    #     if os.path.isdir(folder_path):
+    #         for date in os.listdir(folder_path):
+    #             html_path = os.path.join(folder_path, date)
+    #             for html_file in os.listdir(html_path):
+    #                 # if date != '14.03.2023' or html_file != '66_Warsaw,Masovian Voivodeship,Poland_Polish.html':
+    #                 #     continue
+    #                 html_file_path = os.path.join(html_path, html_file)
+    #                 parser_result = run(html_date, html_file_path, run_parser_flag=True)
+    #                 # print(parser_result)
+    #                 country = list(parser_result.keys())[0][1]
+    #                 language = list(parser_result.keys())[0][2]
+    #                 term_id = list(parser_result.keys())[0][0]
+    #                 filtered_ground_truth = filter_df_by_country_lang_term_date(ground_truth_df, country, language,
+    #                                                                             term_id, date)
+    #                 # Convert the filtered ground truth data to a dictionary
+    #                 ground_truth = {}
+    #                 for index, row in filtered_ground_truth.iterrows():
+    #                     key = (row['Term_id'], row['Country'], row['Language'])
+    #                     url = row['Link']
+    #                     if key not in ground_truth:
+    #                         ground_truth[key] = []
+    #                     ground_truth[key].append(url)
+    #                 ground_truth_with_ranks = {}
+    #                 for key, urls in ground_truth.items():
+    #                     for index, url in enumerate(urls):
+    #                         if key not in ground_truth_with_ranks:
+    #                             ground_truth_with_ranks[key] = []
+    #                         ground_truth_with_ranks[key] = ground_truth_with_ranks[key] + [(index + 1, url)]
+    #                 # Calculate recall and precision for this dataset
+    #                 recall, precision, f1 = calculate_recall_precision(parser_result, ground_truth)
+    #                 dates_recall_precision[date][0] += recall
+    #                 dates_recall_precision[date][1] += precision
+    #                 dates_recall_precision[date][2] += f1
+    #                 dates_recall_precision[date][3] += 1
+    #                 languages_recall_precision[language][0] += recall
+    #                 languages_recall_precision[language][1] += precision
+    #                 languages_recall_precision[language][2] += f1
+    #                 languages_recall_precision[language][3] += 1
+    #                 all_recall += recall
+    #                 all_precision += precision
+    #                 all_f1 += f1
+    #                 # calculate kendell tau
+    #                 tau_distance += calculate_kendall_tau_with_disagreement(ground_truth_with_ranks[(term_id, country, language)],
+    #                                                      parser_result[(term_id, country, language)])
+    #                 i += 1
+    # for date, values in dates_recall_precision.items():
+    #     print(f'Average recall for date {date}: {values[0] / values[3]}')
+    #     print(f'Average precision for date {date}: {values[1] / values[3]}')
+    #     print(f'Average f1 for date {date}: {values[2] / values[3]}')
+    # for lang, values in languages_recall_precision.items():
+    #     print(f'Average recall for lang {lang}: {values[0] / values[3]}')
+    #     print(f'Average precision for lang {lang}: {values[1] / values[3]}')
+    #     print(f'Average f1 for lang {lang}: {values[2] / values[3]}')
+    # print(f'Average recall for all data: {all_recall / i}')
+    # print(f'Average precision for all data: {all_precision / i}')
+    # print(f'Average f1 for all data: {all_f1 / i}')
+    # print(f'Average kendall tau distance for all data: {tau_distance / i}')
+    #                 matching_results, success, fails = compare_ground_truth_to_parser_dict(parser_result,
+    #                                                                                        filtered_ground_truth)
+    #                 for record in matching_results:
+    #                     result_df = result_df.append(pd.Series(record, index=result_df.columns), ignore_index=True)
+    #
+    #                 all_success += success
+    #                 all_failed += fails
+    # print(f'number of success: {all_success} \n'
+    #       f'number of fails: {all_failed}')
+    # result_df.to_csv('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data for test/result_test.csv', index=False)
+    # # -------------------------- Create Graph -------------------------------------------------
+    # html_date = '20230314'
+    # path = 'C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/20230314-html/htmls_for_graphs'
+    # parsed_dict = run(html_date, path, run_parser_flag=True)
+    # # Extract Wikipedia ranks from the dictionary
+    # rows = []
+    # for key, values in parsed_dict.items():
+    #     term_id, country, language = key
+    #     wikipedia_link_rank = [rank for rank, link in values if "wikipedia" in link.lower()]
+    #
+    #     if wikipedia_link_rank:
+    #         rows.append((term_id,country, language, wikipedia_link_rank[0]))
+    #
+    # # Create a DataFrame
+    # df = pd.DataFrame(rows, columns=['ID', 'Country', 'Language', 'Rank'])
+    # df.to_csv('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/20230314-html/htmls_for_graphs/wikipedia_ranks.csv', index=False)
+    # df = pd.read_csv('C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/20230314-html/htmls_for_graphs/wikipedia_ranks.csv')
+    # # Create a scatter plot
+    # filterd_df = df[(df['ID'].isin([42,38,39,58,59])) & (df['Language'].isin(['English', 'Arabic', 'French', 'Spanish']))]
+    # plt.figure(figsize=(10, 6))
+    # sns.scatterplot(x='Language', y='Rank', hue='ID', data=filterd_df, palette='Set1', s=100)
+    #
+    # # Customize the plot
+    # plt.title('Scatter Plot of Rank by Language and ID')
+    # plt.xlabel('Language')
+    # plt.ylabel('Rank')
+    # plt.grid(True)
+    #
+    # # Show the plot
+    # plt.show()
+    ##------------------------------Check pages consistency--------------------------------------
+    html_dates = ['20220818', '20221204', '20230314']

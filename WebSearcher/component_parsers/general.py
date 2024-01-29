@@ -26,6 +26,7 @@ def parse_general_results(cmpt):
             break
         else:
             total_subs = sub.find_all('div', {'class': 'yuRUbf'})
+            total_subs.extend(sub.find_all('td', {'class': 'cIkxbf'}))
             if total_subs:
                 all_subs.extend(total_subs)
             else:

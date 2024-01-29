@@ -42,8 +42,10 @@ def classify_type(cmpt):
     if cmpt_type == "unknown":
         cmpt_type = classify_h2_divs(cmpt)
 
+
     if cmpt_type == "unknown":
         cmpt_type = classify_h3_divs(cmpt)
+
 
     # OR CODE -------------------
     # Find all elements with the "class" attribute within the component
@@ -146,6 +148,14 @@ h2_text_to_label = {
     'Главные новости': 'top_stories',
     '주요 뉴스': 'top_stories',
     '동영상': 'videos',
+    'Nuus': 'top_stories',
+    'Marknuus': 'top_stories',
+    'Berita utama': 'top_stories',
+    'Tin bài hàng đầu': 'top_stories',
+    'Головні новини': 'top_stories',
+    '焦點新聞': 'top_stories',
+    '預告片與剪輯片段': 'videos',
+    'Najważniejsze artykuły': 'top_stories',
 }
 
 
@@ -210,6 +220,8 @@ h3_text_to_label = {
     '動画': 'videos',
     '视频': 'videos',
     '동영상': 'videos',
+    'Відео': 'videos',
+    'Wideo': 'videos',
 }
 
 
@@ -224,8 +236,8 @@ def classify_h3_divs(cmpt, text_to_label=h3_text_to_label):
     for i in range(len(all_h3_text)):
         split_str = all_h3_text[i].split()
         for word in split_str:
-            if word == 'Twitter':
-                return text_to_label[word]
+            if 'Twitter' in word:
+                return text_to_label['Twitter']
 
     for i in range(len(all_h3_text)):
         if all_h3_text[i] in text_to_label.keys():

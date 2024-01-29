@@ -1,6 +1,7 @@
 from . import parse_general_results
 from . import parse_people_also_ask
 
+
 def parse_general_questions(cmpt):
     """Parse a General + People Also Ask hybrid component
 
@@ -13,11 +14,11 @@ def parse_general_questions(cmpt):
     Returns:
         dict : parsed result
     """
-
     result = parse_general_results(cmpt)
-    questions = parse_people_also_ask(cmpt)
-    result[0]['details'] = questions[0]['details']
-    result[0]['type'] = 'general_questions'
+    try:
+        questions = parse_people_also_ask(cmpt)
+        result[0]['details'] = questions[0]['details']
+        result[0]['type'] = 'general_questions'
+    except:
+        pass
     return result
-
-

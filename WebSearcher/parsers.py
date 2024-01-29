@@ -54,12 +54,19 @@ def extract_results_column(soup):
     """
     # Check if layout contains left side-bar
     left_side_bar = soup.find('div', {'class': 'OeVqAd'})
+    check_main = None
     if not left_side_bar:
         # Extract results from single div
         # OR CODE ---------------
         main = soup.find('div', {'id': 'rso'})
         if len(list(main.children)) == 1:
-            main = main.find('div', {'id': 'kp-wp-tab-overview'})
+            check_main = main.find('div', {'id': 'kp-wp-tab-overview'})
+            if len(list(check_main.children)) > 0:
+                main = check_main
+            else:
+                check_main = main.find('div', {'id': 'kp-wp-tab-HEALTH_INFO_SAFETY'})
+                if len(list(check_main.children)) > 0:
+                    main = check_main
         drop_tags = {'script', 'style', None}
         sub_column = []
         for c in main.children:
@@ -141,7 +148,6 @@ def extract_components(soup):
 
     cmpts = []
 
-
     # Top Image Carousel
     top_bar = soup.find('div', {'id': 'appbar'})
     if top_bar:
@@ -184,7 +190,6 @@ def extract_components(soup):
         if rhs_kp:
             # reading from top-to-bottom, left-to-right
             cmpts.append(('knowledge_rhs', rhs_kp))
-
 
     return cmpts
 
@@ -247,7 +252,8 @@ def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
     cmpts = extract_components(soup)
     # for i in cmpts:
     #     print(i)
-    # cmpts = [cmpts[0]]
+    # cmpts = [cmpts[2]]
+    # print(cmpts)
     parsed = []
     if verbose:
         log.info(f'Parsing SERP {serp_id}')
