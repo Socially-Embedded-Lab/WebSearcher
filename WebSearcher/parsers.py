@@ -59,32 +59,37 @@ def extract_results_column(soup):
         # Extract results from single div
         # OR CODE ---------------
         main = soup.find('div', {'id': 'rso'})
-        if len(list(main.children)) == 1:
-            check_main = main.find('div', {'id': 'kp-wp-tab-overview'})
-            if len(list(check_main.children)) > 0:
-                main = check_main
-            else:
-                check_main = main.find('div', {'id': 'kp-wp-tab-HEALTH_INFO_SAFETY'})
-                if len(list(check_main.children)) > 0:
-                    main = check_main
-        drop_tags = {'script', 'style', None}
-        sub_column = []
-        for c in main.children:
-            if c.name in drop_tags:
-                continue
-            sub_main = c.find('div', {'class': 'WvKfwe'})
-            if sub_main:
-                c = sub_main
-            if c.name == 'div':
-                child = c.find_all('div', {'class': 'ULSxyf', 'data-hveid': ['CB0QAA', 'CHMQAA']})
-                if not child:
-                    child = c.find_all('div', {'class': 'g Ww4FFb vt6azd tF2Cxc'})
-                for comp in child:
-                    sub_column.append(('main', comp))
-        column = [('main', c) for c in main.children if c.name not in drop_tags]
-        for comp in sub_column:
-            if comp not in column:
-                column.append(comp)
+        try:
+            if len(list(main.children)) == 1:
+                check_main = main.find('div', {'id': 'kp-wp-tab-overview'})
+                if check_main is not None:
+                    if len(list(check_main.children)) > 0:
+                        main = check_main
+                else:
+                    check_main = main.find('div', {'id': 'kp-wp-tab-HEALTH_INFO_SAFETY'})
+                    if check_main is not None:
+                        if len(list(check_main.children)) > 0:
+                            main = check_main
+            drop_tags = {'script', 'style', None}
+            sub_column = []
+            for c in main.children:
+                if c.name in drop_tags:
+                    continue
+                sub_main = c.find('div', {'class': 'WvKfwe'})
+                if sub_main:
+                    c = sub_main
+                if c.name == 'div':
+                    child = c.find_all('div', {'class': 'ULSxyf', 'data-hveid': ['CB0QAA', 'CHMQAA']})
+                    if not child:
+                        child = c.find_all('div', {'class': 'g Ww4FFb vt6azd tF2Cxc'})
+                    for comp in child:
+                        sub_column.append(('main', comp))
+            column = [('main', c) for c in main.children if c.name not in drop_tags]
+            for comp in sub_column:
+                if comp not in column:
+                    column.append(comp)
+        except:
+            column = []
     else:
         # Extract results from two div sections
         rso = []
@@ -252,8 +257,7 @@ def parse_serp(serp, serp_id=None, verbose=False, make_soup=False):
     cmpts = extract_components(soup)
     # for i in cmpts:
     #     print(i)
-    # cmpts = [cmpts[2]]
-    # print(cmpts)
+    # cmpts = [cmpts[5]]
     parsed = []
     if verbose:
         log.info(f'Parsing SERP {serp_id}')

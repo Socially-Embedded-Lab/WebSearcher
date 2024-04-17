@@ -10,6 +10,7 @@ import csv
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import kendalltau
+from urllib.parse import urlparse, urlunparse
 
 langs_dict = {
     'en': 'English',
@@ -46,7 +47,7 @@ def get_directory_path(html_date, entered_path=None):
     if entered_path:
         return entered_path
     else:
-        return f"C:/Users/Or (G)Meiri/Desktop/Work/sci-search/parser/data/{html_date}-html/html"
+        return "/Users/ormeiri/Desktop/Work/sci-search/parser/data/" + html_date + "-html/html"
 
 
 def parse_html_file(file_path, se):
@@ -156,7 +157,7 @@ def run_parser(html_date, entered_path=None):
         file_list = os.listdir(directory_path)
         html_files = [file for file in file_list if file.endswith(".html")]
 
-    # html_files = [file for file in html_files if file == '70_Berlin,Berlin,Germany_German.html']
+    # html_files = [file for file in html_files if file == '38_Brasilia,Federal District,Brazil_Portuguese.html']
 
     se = ws.SearchEngine()  # Initialize the SearchEngine
 
@@ -186,7 +187,6 @@ def run_parser(html_date, entered_path=None):
         print(html_file)
         urls = parse_html_file(file_path, se)
         compare_dict[tuple(key_parts)] = urls
-
     return compare_dict
 
 
@@ -419,8 +419,54 @@ def compare_ground_truth_to_parser_dict(parser_dict, ground_truth_df):
                 fails += 1
         else:
             print('I cant find the key in the parser dict')
-            print(key)
     return matching_results, success, fails
+
+
+def remove_subdomain(netloc):
+    domain_parts = netloc.split('.')
+    if len(domain_parts) > 2:
+        domain_parts.pop(0)
+    return '.'.join(domain_parts)
+
+
+def canonicalize_url(url):
+    if 'youtube.com' in url.lower():
+        return url  # Return YouTube URLs unchanged
+    parsed_url = urlparse(url.lower())
+    cleaned_netloc = remove_subdomain(parsed_url.netloc)
+    return parsed_url.scheme + "://" + cleaned_netloc + parsed_url.path
+
+
+# Function to compare URLs between two dates
+def compare_dates(dict1, dict2):
+    unchanged_percentages = []
+
+    for key in set(dict1.keys()).union(dict2.keys()):
+        urls1 = set(canonicalize_url(url) for url in dict1.get(key, set()))
+        urls2 = set(canonicalize_url(url) for url in dict2.get(key, set()))
+        total_urls = 0
+        if len(urls1) == 0 or len(urls2) == 0:
+            continue
+        if len(urls1) >= len(urls2):
+            total_urls = len(urls1)
+        else:
+            total_urls = len(urls2)
+        if total_urls > 0:
+            unchanged = urls1.intersection(urls2)
+            percentage_unchanged = (len(unchanged) / total_urls) * 100
+            unchanged_percentages.append(percentage_unchanged)
+
+    # Calculate the average percentage of unchanged URLs
+    if unchanged_percentages:
+        average_unchanged = sum(unchanged_percentages) / len(unchanged_percentages)
+    else:
+        average_unchanged = 0
+
+    return average_unchanged
+
+
+def remove_rank_from_url_list(url_list):
+    return [url for rank, url in url_list]
 
 
 if __name__ == "__main__":
@@ -580,6 +626,41 @@ if __name__ == "__main__":
     # print(f'Average precision for all data: {all_precision / i}')
     # print(f'Average f1 for all data: {all_f1 / i}')
     # print(f'Average kendall tau distance for all data: {tau_distance / i}')
+    #
+    # date_results = {}
+    # language_results = {}
+    #
+    # for date, values in dates_recall_precision.items():
+    #     date_results[date] = {
+    #         'Precision': values[1] / values[3],
+    #         'Recall': values[0] / values[3],
+    #         'F1 Score': values[2] / values[3]
+    #     }
+    #
+    # for lang, values in languages_recall_precision.items():
+    #     language_results[lang] = {
+    #         'Precision': values[1] / values[3],
+    #         'Recall': values[0] / values[3],
+    #         'F1 Score': values[2] / values[3]
+    #     }
+    #
+    # # Convert the dictionaries to DataFrames
+    # date_df = pd.DataFrame.from_dict(date_results, orient='index')
+    # language_df = pd.DataFrame.from_dict(language_results, orient='index')
+    #
+    # # Add a 'Category' column to each DataFrame
+    # date_df['Category'] = date_df.index
+    # language_df['Category'] = language_df.index
+    #
+    # # Combine both DataFrames into one
+    # combined_df = pd.concat([date_df, language_df])
+    #
+    # # Reorder columns if needed
+    # combined_df = combined_df[['Category', 'Precision', 'Recall', 'F1 Score']]
+    #
+    # # Save to CSV
+    # combined_df.to_csv('/Users/ormeiri/Desktop/Work/sci-search/parser/data for test/metrics_by_category.csv', index=False)
+
     #                 matching_results, success, fails = compare_ground_truth_to_parser_dict(parser_result,
     #                                                                                        filtered_ground_truth)
     #                 for record in matching_results:
@@ -622,3 +703,28 @@ if __name__ == "__main__":
     # plt.show()
     ##------------------------------Check pages consistency--------------------------------------
     html_dates = ['20220818', '20221204', '20230314']
+    print(f'The current date is: {html_dates[0]}')
+    august_dict = run(html_dates[0], run_parser_flag=True)
+    # print(f'The dictionary is: {august_dict}')
+    print(f'The current date is: {html_dates[1]}')
+    december_dict = run(html_dates[1], run_parser_flag=True)
+    # print(f'The dictionary is: {december_dict}')
+    print(f'The current date is: {html_dates[2]}')
+    march_dict = run(html_dates[2], run_parser_flag=True)
+    # print(f'The dictionary is: {march_dict}')
+
+    # # Remove rank from tuple
+    for key, values in august_dict.items():
+        august_dict[key] = sorted(remove_rank_from_url_list(values))
+    for key, values in march_dict.items():
+        march_dict[key] = sorted(remove_rank_from_url_list(values))
+    for key, values in december_dict.items():
+        december_dict[key] = sorted(remove_rank_from_url_list(values))
+
+    # # Compare August with December, and December with March
+    average_unchanged_august_december = compare_dates(august_dict, december_dict)
+    average_unchanged_august_march = compare_dates(august_dict, march_dict)
+    average_unchanged_december_march = compare_dates(december_dict, march_dict)
+    print(f'Average percentage of unchanged URLs between August and December: {average_unchanged_august_december:.2f}%')
+    print(f'Average percentage of unchanged URLs between August and March: {average_unchanged_august_march:.2f}%')
+    print(f'Average percentage of unchanged URLs between December and March: {average_unchanged_december_march:.2f}%')
