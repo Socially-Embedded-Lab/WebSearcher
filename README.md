@@ -6,7 +6,7 @@ This package provides tools for conducting algorithm audits of web search and
 includes a scraper built on `requests` with tools for geolocating, conducting, 
 and saving searches. It also includes a modular parser built on `BeautifulSoup` 
 for decomposing a SERP into list of components with categorical classifications 
-and position-based specifications.
+and position-based specifications.i
 
 Version numbers correspond to the date of the data corpus that the parser was 
 last optimized to perform on. For example, version `2022.12.18` was developed 
